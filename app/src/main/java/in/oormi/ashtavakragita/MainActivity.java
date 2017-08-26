@@ -219,7 +219,7 @@ public class MainActivity extends AppCompatActivity {
         vibeenable = prefs.getBoolean("notifications_new_message_vibrate", false);
         ttsenable = prefs.getBoolean("notifications_new_message_speak", false);
 
-        speechrate = 0.8f;//prefs.getBoolean("notifications_new_message_tts", false);
+        speechrate = 0.9f;//prefs.getBoolean("notifications_new_message_tts", false);
         String remfreqstr = prefs.getString("freq_list", "60");
         if (remfreqstr.length()<1) remfreqstr = "60";
         freq = 60 * Integer.parseInt(remfreqstr);
@@ -229,7 +229,7 @@ public class MainActivity extends AppCompatActivity {
         automode = prefs.getBoolean("auto_switch", false);
         if (automode) {
             nonightrem = false;//autoread in night too
-            freq = 15;
+            freq = 20;
         }
         String srandenable = prefs.getString("order_list", "0");
         randenable = Integer.parseInt(srandenable);

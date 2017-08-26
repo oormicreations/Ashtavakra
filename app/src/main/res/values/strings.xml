@@ -51,7 +51,7 @@
     <!-- Example settings for Data & Sync -->
     <string name="pref_header_data_sync">Other</string>
     <string name="pref_autotitle">Auto Read</string>
-    <string name="pref_autosumm">Read verses automatically every 15 secs</string>
+    <string name="pref_autosumm">Read verses automatically every 20 secs</string>
 
 
     <!-- Example settings for Notifications -->
