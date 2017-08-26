@@ -1,0 +1,97 @@
+<resources>
+    <string name="app_name">Ashtavakra Gita</string>
+    <string name="cover">Ashtavakra Gita</string>
+    <string name="texterror">Error@Invalid Count@Requested verse number exceeds total verses.~Or it could not be read from file.</string>
+    <string name="touchtostart">Touch the Sage to start. Swipe for next/previous.</string>
+    <string name="nxtremtoast">Next verse in&#160;</string>
+    <string name="nxtremmintoast">&#160;minutes</string>
+    <string name="errorbadformat">Error : Verse is not correctly formatted.</string>
+    <string name="title_activity_settings">Settings</string>
+    <string name="rempaused">Ashtavakra Gita Paused</string>
+
+    <!-- Strings related to Settings -->
+
+    <!-- Example General settings -->
+    <string name="pref_header_general">Schedule</string>
+
+    <string name="pref_title_social_recommendations">Turn off at night</string>
+    <string name="pref_description_social_recommendations">Night hours - 22:00 to 06:00</string>
+
+
+    <string name="pref_title_add_friends_to_messages">Frequency</string>
+    <string-array name="pref_example_list_titles">
+        <item>Every 10 mins</item>
+        <item>Every 20 mins</item>
+        <item>Every 30 mins</item>
+        <item>Every hour</item>
+        <item>Every 3 hours</item>
+        <item>Twice a day</item>
+        <item>Once a day</item>
+    </string-array>
+    <string-array name="pref_example_list_values">
+        <item>10</item>
+        <item>20</item>
+        <item>30</item>
+        <item>60</item>
+        <item>180</item>
+        <item>360</item>
+        <item>1440</item>
+    </string-array>
+
+    <string name="pref_order">Order</string>
+    <string-array name="pref_order_titles">
+        <item>Sequential</item>
+        <item>Random</item>
+    </string-array>
+    <string-array name="pref_order_values">
+        <item>0</item>
+        <item>1</item>
+    </string-array>
+
+    <!-- Example settings for Data & Sync -->
+    <string name="pref_header_data_sync">Other</string>
+    <string name="pref_autotitle">Auto Read</string>
+    <string name="pref_autosumm">Read verses automatically every 15 secs</string>
+
+
+    <!-- Example settings for Notifications -->
+    <string name="pref_header_notifications">Notifications</string>
+
+    <string name="pref_title_new_message_notifications">Sound Alerts</string>
+
+    <string name="pref_title_ringtone">Alert Tone</string>
+    <string name="pref_ringtone_silent">Silent</string>
+
+    <string name="pref_title_vibrate">Vibrate</string>
+    <string name="pref_title_speak">Speak Aloud</string>
+
+    <!-- Info strings -->
+
+    <string name="btnresources">Resources</string>
+    <string name="blogbuttontext">Pure Experiences Blog Articles</string>
+    <string name="youtube_channel">Youtube Channel</string>
+    <string name="more_tools">More Tools</string>
+    <string name="meetup_groups">Meetup Groups</string>
+    <string name="help">Help:\n\n
+        This app reads the Ashtavakra Gita. Touch the sage to start.\n
+        Use settings to set notification sound, vibrate or speech. You can set it to read sequentially or randomly.\n
+        Try the auto read mode to read it without a schedule or just swipe to get next/previous verse.\n\n
+    </string>
+    <string name="about">About:\n\n
+        Pure Experiences Ashtavakra Gita App\nVersion 1.0.0\nOormi Creations 2017\nhttp://oormi.in\n\n
+        This project is open source and the source code is available on github.\n
+        https://github.com/oormicreations/Ashtavakra
+    </string>
+
+    <color name="bkcolor">#223333</color>
+    <!-- More strings -->
+
+    <string name="defaultwhosaid">Unknown</string>
+    <string name="defaultversenum">Verse Num</string>
+    <string name="stopped">Stopped</string>
+    <string name="status_auto">Auto Reading</string>
+    <string name="status_user">User Reading</string>
+    <string name="status_sch">Reading as scheduled</string>
+
+
+</resources>
