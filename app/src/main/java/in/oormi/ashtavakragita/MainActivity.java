@@ -215,9 +215,9 @@ public class MainActivity extends AppCompatActivity {
 
         alerttone = prefs.getString("notifications_new_message_ringtone",
                 "content://settings/system/notification_sound");
-        alertenable = prefs.getBoolean("notifications_new_message", false);
+        alertenable = prefs.getBoolean("notifications_new_message", true);
         vibeenable = prefs.getBoolean("notifications_new_message_vibrate", false);
-        ttsenable = prefs.getBoolean("notifications_new_message_speak", false);
+        ttsenable = prefs.getBoolean("notifications_new_message_speak", true);
 
         speechrate = 0.9f;//prefs.getBoolean("notifications_new_message_tts", false);
         String remfreqstr = prefs.getString("freq_list", "60");
@@ -380,6 +380,12 @@ public class MainActivity extends AppCompatActivity {
                     PowerManager.WakeLock wl = pm.newWakeLock(PowerManager.FULL_WAKE_LOCK |
                             PowerManager.ACQUIRE_CAUSES_WAKEUP, "AshtavakraAppTag");
                     wl.acquire();
+
+                    Intent startIntent = c.getPackageManager()
+                            .getLaunchIntentForPackage(c.getPackageName());
+                    startIntent.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT); //bring to foreground
+                    c.startActivity(startIntent);
+
                     // Show next verse
                     Verse++;
                     ShowVerse(true);
