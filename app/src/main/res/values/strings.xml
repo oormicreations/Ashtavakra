@@ -8,6 +8,17 @@
     <string name="errorbadformat">Error : Verse is not correctly formatted.</string>
     <string name="title_activity_settings">Settings</string>
     <string name="rempaused">Ashtavakra Gita Paused</string>
+    <string name="defaultwhosaid">Unknown</string>
+    <string name="defaultversenum">Verse Num</string>
+    <string name="stopped">Stopped</string>
+    <string name="status_auto">Auto Reading</string>
+    <string name="status_user">User Reading</string>
+    <string name="status_sch">Reading as scheduled</string>
+    <string name="jumptitle">Jump to Verse</string>
+    <string name="jumprange">Verse # (1 to 298)</string>
+    <string name="jumpcancel">Cancel</string>
+    <string name="jumpok">Go</string>
+    <string name="menu_name_info">Info</string>
 
     <!-- Strings related to Settings -->
 
@@ -64,34 +75,6 @@
 
     <string name="pref_title_vibrate">Vibrate</string>
     <string name="pref_title_speak">Speak Aloud</string>
-
-    <!-- Info strings -->
-
-    <string name="btnresources">Resources</string>
-    <string name="blogbuttontext">Pure Experiences Blog Articles</string>
-    <string name="youtube_channel">Youtube Channel</string>
-    <string name="more_tools">More Tools</string>
-    <string name="meetup_groups">Meetup Groups</string>
-    <string name="help">Help:\n\n
-        This app reads the Ashtavakra Gita. Touch the sage to start.\n
-        Use settings to set notification sound, vibrate or speech. You can set it to read sequentially or randomly.\n
-        Try the auto read mode to read it without a schedule or just swipe to get next/previous verse.\n\n
-    </string>
-    <string name="about">About:\n\n
-        Pure Experiences Ashtavakra Gita App\nVersion 1.0.1\nOormi Creations 2017\nhttp://oormi.in\n\n
-        This project is open source and the source code is available on github.\n
-        https://github.com/oormicreations/Ashtavakra
-    </string>
-
-    <color name="bkcolor">#223333</color>
-    <!-- More strings -->
-
-    <string name="defaultwhosaid">Unknown</string>
-    <string name="defaultversenum">Verse Num</string>
-    <string name="stopped">Stopped</string>
-    <string name="status_auto">Auto Reading</string>
-    <string name="status_user">User Reading</string>
-    <string name="status_sch">Reading as scheduled</string>
 
 
 </resources>

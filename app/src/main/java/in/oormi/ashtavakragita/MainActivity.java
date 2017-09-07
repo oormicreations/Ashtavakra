@@ -10,48 +10,54 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
-import android.content.res.AssetManager;
 import android.graphics.Color;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.PowerManager;
 import android.os.SystemClock;
 import android.os.Vibrator;
 import android.preference.PreferenceManager;
 import android.speech.tts.TextToSpeech;
+import android.support.v4.app.LoaderManager;
+import android.support.v4.content.AsyncTaskLoader;
+import android.support.v4.content.Loader;
+import android.support.v4.view.MenuItemCompat;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
+import android.support.v7.widget.ShareActionProvider;
+import android.text.InputType;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.KeyEvent;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
-import android.widget.Button;
 import android.widget.CompoundButton;
+import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
 
 import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.Calendar;
 import java.util.Locale;
 import java.util.Random;
-import java.util.Timer;
-import java.util.TimerTask;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements
+        LoaderManager.LoaderCallbacks<String> {
+
     TextToSpeech tts;
     String alerttone;
     boolean alertenable;
@@ -70,7 +76,9 @@ public class MainActivity extends AppCompatActivity {
     boolean animrunning = false;
     private float x1;
     static final int MIN_DISTANCE = 150;
+    static final int MAX_VERSE = 298;
     int Verse = 0;
+    public static String [] allverses = new String[MAX_VERSE];
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -81,6 +89,8 @@ public class MainActivity extends AppCompatActivity {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD);
+
+        getSupportLoaderManager().initLoader(1, null, (LoaderManager.LoaderCallbacks<String>)this).forceLoad();
 
         Setup();
         setupTimer();
@@ -130,8 +140,7 @@ public class MainActivity extends AppCompatActivity {
                 new View.OnClickListener(){
                     @Override
                     public void onClick (View view){
-                        Intent intent = new Intent(MainActivity.this, ResourceShow.class);
-                        startActivity(intent);
+                        JumpDialog();
                     }
                 });
 
@@ -161,9 +170,12 @@ public class MainActivity extends AppCompatActivity {
 
         if((Verse < 0) || (randenable > 0)){
             Random rand = new Random();
-            Verse = 1 + rand.nextInt(297);
+            Verse = rand.nextInt(MAX_VERSE);
         }
 
+        if (Verse > MAX_VERSE) Verse = 0;
+
+/*
         BufferedReader reader = null;
         try {
             reader = new BufferedReader(new InputStreamReader(getAssets().open("verses.txt")));
@@ -182,7 +194,8 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         }
-
+*/
+        mLine = allverses[Verse-1];
         if (mLine == null){
             mLine = getString(R.string.texterror);
         }
@@ -196,6 +209,7 @@ public class MainActivity extends AppCompatActivity {
             tv3.setText(versecontent[2]);
             if (sounds) {
                 versecontent[2] = versecontent[2].replace("-", ",");
+                versecontent[2] = versecontent[2].replace("\n\n", "\n");
                 SoundAlert(versecontent[2]);
             }
         }
@@ -302,9 +316,24 @@ public class MainActivity extends AppCompatActivity {
             Log.e("Media Error", "Failed to play alert.");
         }
     }
+
+    @Override
+    protected void onPause()
+    {
+        super.onPause();
+        // Store values between instances here
+        SharedPreferences preferences = getPreferences(MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();  // Put the values from the UI
+        editor.putInt("LastVerse", Verse); // value to store
+        // Commit to storage
+        editor.commit();
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
+        SharedPreferences preferences = getPreferences(MODE_PRIVATE);
+        Verse = preferences.getInt("LastVerse", 0); //restart at the last verse
     }
 
     public void startTimer() {
@@ -451,13 +480,14 @@ public class MainActivity extends AppCompatActivity {
                     if (x2 > x1)
                     {
                         Verse++;
+                        if(Verse > MAX_VERSE){Verse = 0;}
                     }
 
                     // Right to left swipe action
                     else
                     {
                         Verse--;
-                        if(Verse < 0){Verse = 0;}
+                        if(Verse < 0){Verse = MAX_VERSE;}
                     }
 
                     stopTimer(true);
@@ -473,5 +503,150 @@ public class MainActivity extends AppCompatActivity {
         return super.onTouchEvent(event);
     }
 
+    @Override
+    public void onLoadFinished(Loader<String> loader, String data) {
+        Toast.makeText(MainActivity.this, data, Toast.LENGTH_SHORT).show();
+    }
 
+    @Override
+    public void onLoaderReset(Loader<String> loader) {
+
+    }
+
+    @Override
+    public Loader onCreateLoader(int arg0, Bundle arg1) {
+        return new FetchData(this);
+    }
+
+    private static class FetchData extends AsyncTaskLoader<String> {
+
+        public FetchData(Context context) {
+            super(context);
+        }
+
+        @Override
+        public String loadInBackground() {
+            String str;
+
+            BufferedReader reader = null;
+            try {
+                reader = new BufferedReader(new InputStreamReader(getContext().getAssets().open("verses.txt")));
+                int v = 0;
+                while (((str = reader.readLine()) != null) && (v < 298)) {
+                    allverses[v] = str;
+                    v++;
+                }
+                str = "Loading finished.";
+            } catch (IOException e) {
+                str = "Loading error.";
+                Log.e("File Error", "Could not open verse file.");
+            } finally {
+                if (reader != null) {
+                    try {
+                        reader.close();
+                    } catch (IOException e) {
+                        Log.e("File Error", "Could not close verse file.");
+                    }
+                }
+            }
+            return str;
+        }
+
+        @Override
+        public void deliverResult(String data) {
+            super.deliverResult(data);
+        }
+    }
+
+    public void JumpDialog(){
+        AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(this);
+
+        LinearLayout layout = new LinearLayout(this);
+        LinearLayout.LayoutParams params =
+                new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setLayoutParams(params);
+
+        layout.setGravity(Gravity.CLIP_VERTICAL);
+        layout.setPadding(10,10,10,10);
+
+        TextView tv = new TextView(this);
+        tv.setText(R.string.jumptitle);
+        tv.setPadding(40, 40, 40, 40);
+        tv.setGravity(Gravity.CENTER);
+        tv.setTextSize(20);
+
+        final EditText et = new EditText(this);
+        et.setInputType(InputType.TYPE_CLASS_NUMBER);
+        et.setHint(R.string.jumprange);
+        et.setGravity(Gravity.CENTER);
+        layout.addView(et);
+
+        alertDialogBuilder.setView(layout);
+        alertDialogBuilder.setCustomTitle(tv);
+
+        alertDialogBuilder.setNegativeButton(R.string.jumpcancel, new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int whichButton) {
+                dialog.cancel();
+            }
+        });
+
+        alertDialogBuilder.setPositiveButton(R.string.jumpok, new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int which) {
+                String etStr = et.getText().toString();
+                if (etStr.length()>0){
+                    Verse = Integer.parseInt(etStr);
+                    ShowVerse(true);
+                }
+            }
+        });
+
+        AlertDialog alertDialog = alertDialogBuilder.create();
+
+        try {
+            alertDialog.show();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private ShareActionProvider mShareActionProvider;
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.infomenu, menu);
+
+        // Locate MenuItem with ShareActionProvider
+        MenuItem item = menu.findItem(R.id.menu_item_share);
+
+        // Fetch and store ShareActionProvider
+        mShareActionProvider = (ShareActionProvider)  MenuItemCompat.getActionProvider(item);
+        Intent shareIntent = new Intent(Intent.ACTION_SEND);
+        shareIntent.setType("text/plain");
+        shareIntent.putExtra(Intent.EXTRA_TEXT,
+                "https://play.google.com/store/apps/details?id=in.oormi.ashtavakragita");
+        shareIntent.putExtra(android.content.Intent.EXTRA_SUBJECT, "Check out this app!");
+        setShareIntent(shareIntent);
+        return true;
+    }
+
+    private void setShareIntent(Intent shareIntent) {
+        if (mShareActionProvider != null) {
+            mShareActionProvider.setShareIntent(shareIntent);
+        }
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.info:
+                //Toast.makeText(this, "Menu Item 1 selected", Toast.LENGTH_SHORT).show();
+                Intent i = new Intent(this, ResourceShow.class);
+                startActivity(i);
+                break;
+        }
+        return true;
+    }
 }
