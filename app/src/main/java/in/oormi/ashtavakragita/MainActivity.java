@@ -96,6 +96,8 @@ public class MainActivity extends AppCompatActivity implements
         setupTimer();
 
         Verse = 0;
+        SharedPreferences preferences = getPreferences(MODE_PRIVATE);
+        Verse = preferences.getInt("LastVerse", 0); //restart at the last verse
         ShowVerse(false);
         //Toast.makeText(MainActivity.this, R.string.touchtostart, Toast.LENGTH_LONG).show();
         final TextView tvs = (TextView)findViewById(R.id.textstatus);
@@ -208,10 +210,16 @@ public class MainActivity extends AppCompatActivity implements
             tv2.setText(versecontent[1]);
             tv3.setText(versecontent[2]);
             if (sounds) {
-                versecontent[2] = versecontent[2].replace("-", ",");
+                versecontent[2] = versecontent[2].replace("-", " ");
                 versecontent[2] = versecontent[2].replace("\n\n", "\n");
                 SoundAlert(versecontent[2]);
             }
+            // Store values between instances here
+            SharedPreferences preferences = getPreferences(MODE_PRIVATE);
+            SharedPreferences.Editor editor = preferences.edit();  // Put the values from the UI
+            editor.putInt("LastVerse", Verse); // value to store
+            // Commit to storage
+            editor.commit();
         }
         else{
             tv3.setText(R.string.errorbadformat);
@@ -321,19 +329,11 @@ public class MainActivity extends AppCompatActivity implements
     protected void onPause()
     {
         super.onPause();
-        // Store values between instances here
-        SharedPreferences preferences = getPreferences(MODE_PRIVATE);
-        SharedPreferences.Editor editor = preferences.edit();  // Put the values from the UI
-        editor.putInt("LastVerse", Verse); // value to store
-        // Commit to storage
-        editor.commit();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        SharedPreferences preferences = getPreferences(MODE_PRIVATE);
-        Verse = preferences.getInt("LastVerse", 0); //restart at the last verse
     }
 
     public void startTimer() {
