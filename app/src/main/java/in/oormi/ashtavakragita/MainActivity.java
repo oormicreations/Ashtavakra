@@ -10,7 +10,6 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
-import android.graphics.Color;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.net.Uri;
@@ -27,23 +26,22 @@ import android.support.v4.content.Loader;
 import android.support.v4.view.MenuItemCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.ShareActionProvider;
-import android.text.InputType;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.CompoundButton;
-import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
+import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
@@ -51,6 +49,7 @@ import android.widget.ToggleButton;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Locale;
 import java.util.Random;
@@ -58,9 +57,14 @@ import java.util.Random;
 public class MainActivity extends AppCompatActivity implements
         LoaderManager.LoaderCallbacks<String> {
 
-    TextToSpeech tts;
+    TextToSpeech tts, ttsHindi;
+
     String alerttone;
+    String freqStr;
+    Locale locale;
+
     boolean alertenable;
+    boolean soundenable;
     boolean vibeenable;
     boolean ttsenable;
     float speechrate;
@@ -68,17 +72,29 @@ public class MainActivity extends AppCompatActivity implements
     boolean nonightrem;
     boolean automode;
     int randenable = 0;
+    int lang = 2;
 
     PendingIntent pi;
     BroadcastReceiver br;
     AlarmManager am;
 
     boolean animrunning = false;
+    boolean isTimerOn = false;
+
     private float x1;
     static final int MIN_DISTANCE = 150;
-    static final int MAX_VERSE = 298;
+
     int Verse = 0;
-    public static String [] allverses = new String[MAX_VERSE];
+    public static ArrayList<String> allVerses = new ArrayList<>();
+    final int [] chapMap = {20,25,14,6,4,4,5,4,8,8,8,8,7,4,20,11,20,100,8,14};
+
+    Animation animation1;
+    Animation animation2;
+    Animation animation3;
+    Animation animation4;
+
+    TextView tv1, tv2, tv3, tv4;
+    ScrollView sv;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -95,10 +111,15 @@ public class MainActivity extends AppCompatActivity implements
         Setup();
         setupTimer();
 
+
+//        TextView tv1 = (TextView)findViewById(R.id.textwhosaid);
+//        Typeface type = Typeface.createFromAsset(getAssets(),"kokila.ttf");
+//        tv1.setTypeface(type);
+
         Verse = 0;
-        SharedPreferences preferences = getPreferences(MODE_PRIVATE);
-        Verse = preferences.getInt("LastVerse", 0); //restart at the last verse
-        ShowVerse(false);
+//        SharedPreferences preferences = getPreferences(MODE_PRIVATE);
+//        Verse = preferences.getInt("LastVerse", 0); //restart at the last verse
+//        ShowVerse(true);
         //Toast.makeText(MainActivity.this, R.string.touchtostart, Toast.LENGTH_LONG).show();
         final TextView tvs = (TextView)findViewById(R.id.textstatus);
 
@@ -114,105 +135,112 @@ public class MainActivity extends AppCompatActivity implements
                     if (automode) {
                         tvs.setText(R.string.status_auto);
                     } else {
-                        tvs.setText(R.string.status_sch);
+                        tvs.setText("Reading every " + freqStr);
                     }
                 } else {
                     stopTimer(true);
                     toggle.clearAnimation();
                     tvs.setText(R.string.touchtostart);
+                    //tts.stop();
                 }
             }
         });
 
-        ImageButton mbuttonSetting = (ImageButton) findViewById(R.id.imageButtonSettings);
-        mbuttonSetting.setOnClickListener(
+        final ImageButton mbuttonNext = (ImageButton) findViewById(R.id.imageButtonNext);
+        mbuttonNext.setOnClickListener(
                 new View.OnClickListener(){
                     @Override
                     public void onClick (View view){
-                        stopTimer(true);
-                        if(toggle.isChecked()) {toggle.toggle();}
-                        //Toast.makeText(MainActivity.this, R.string.rempaused, Toast.LENGTH_SHORT).show();
-                        Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
-                        startActivity(intent);
+                        Verse++;
+                        ShowVerse(true);
+                        //if (isTimerOn) stopTimer(true);
+                        //tvs.setText(getString(R.string.status_user));
+                        mbuttonNext.startAnimation(animation4);
                     }
                 });
 
-        ImageButton mbuttonRes = (ImageButton) findViewById(R.id.imageButtonInfo);
-        mbuttonRes.setOnClickListener(
+        final ImageButton mbuttonPrev = (ImageButton) findViewById(R.id.imageButtonPrev);
+        mbuttonPrev.setOnClickListener(
                 new View.OnClickListener(){
                     @Override
                     public void onClick (View view){
-                        JumpDialog();
+                        Verse--;
+                        ShowVerse(true);
+                        //if (isTimerOn) stopTimer(true);
+                        //tvs.setText(getString(R.string.status_user));
+                        mbuttonPrev.startAnimation(animation4);
                     }
                 });
+
+        //mbuttonNext.setImageAlpha(180);
+        //mbuttonPrev.setImageAlpha(180);
 
     }
 
     public void ShowVerse(boolean sounds){
+        if (allVerses.size()<1) return;
+
         String mLine = getString(R.string.cover);
-        TextView tv1 = (TextView)findViewById(R.id.textwhosaid);
-        TextView tv2 = (TextView)findViewById(R.id.textversenum);
-        TextView tv3 = (TextView)findViewById(R.id.textverse);
+        tv1.setText("");
+        tv2.setText("");
+        tv3.setText("");
+        tv4.setText("");
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            int c = Color.parseColor("#ffdd00");
-            tv3.setShadowLayer(60.0f, 0.0f, 0.0f, c);
-        }
+        sv.scrollTo(0, 0);
 
-        if(Verse < 1){
-            tv1.setText("");
-            tv2.setText("");
-            tv3.setText(mLine);
-            tv3.setGravity(Gravity.CENTER);
-            tv3.setTextSize(40.0f);
-            return;
-        }
-        tv3.setGravity(Gravity.CENTER_VERTICAL);
-        tv3.setTextSize(22.0f);
-
-        if((Verse < 0) || (randenable > 0)){
+        if(randenable > 0){
             Random rand = new Random();
-            Verse = rand.nextInt(MAX_VERSE);
+            Verse = rand.nextInt(allVerses.size());
         }
 
-        if (Verse > MAX_VERSE) Verse = 0;
+        if (Verse >= allVerses.size()) Verse = 0;
+        if (Verse < 0) Verse = allVerses.size()-1;
 
-/*
-        BufferedReader reader = null;
-        try {
-            reader = new BufferedReader(new InputStreamReader(getAssets().open("verses.txt")));
-            int v = 1;
-            while (((mLine = reader.readLine()) != null) && (v < Verse)) {
-                v++;
-            }
-        } catch (IOException e) {
-            Log.e("File Error", "Could not open verse file.");
-        } finally {
-            if (reader != null) {
-                try {
-                    reader.close();
-                } catch (IOException e) {
-                    Log.e("File Error", "Could not close verse file.");
-                }
-            }
-        }
-*/
-        mLine = allverses[Verse-1];
+        mLine = allVerses.get(Verse);
         if (mLine == null){
             mLine = getString(R.string.texterror);
         }
 
-        String[] versecontent;
-        versecontent = mLine.split("@");
-        if(versecontent.length == 3) {
-            versecontent[2] = versecontent[2].replace("~", "\n\n");
-            tv1.setText(versecontent[0]);
-            tv2.setText(versecontent[1]);
-            tv3.setText(versecontent[2]);
-            if (sounds) {
-                versecontent[2] = versecontent[2].replace("-", " ");
-                versecontent[2] = versecontent[2].replace("\n\n", "\n");
-                SoundAlert(versecontent[2]);
+        if(Verse == 0){
+            tv1.setGravity(Gravity.CENTER);
+            tv1.setTextSize(30.0f);
+        }else {
+            tv1.setGravity(Gravity.CENTER_VERTICAL);
+            tv1.setTextSize(16.0f);
+        }
+
+        String[] verseContent;
+        verseContent = mLine.split("@");
+
+        if(verseContent.length > 0) {
+            verseContent[0] = verseContent[0].replace("~", "\n");
+            tv1.setText(verseContent[0]);
+
+            if (verseContent.length > 1) {
+                tv2.setText(verseContent[1]);
+            }
+
+            if (verseContent.length > 2) {
+                verseContent[2] = verseContent[2].replace("~", "\n");
+                tv3.setText(verseContent[2]);
+            }
+
+            if ((sounds) && (Verse>0)) {
+                if(verseContent.length > 0)  {
+                    if (verseContent[1].length() > 0 ) {
+                        if ((lang==0)|| (lang==2)) {
+                            verseContent[0] = verseContent[0].subSequence(0, verseContent[0].indexOf("॥")).toString();
+                            verseContent[0] = verseContent[0].replace("।"," ");
+                            verseContent[0] = verseContent[0].replace("\n",". \n");
+                            SoundAlert(verseContent[0], true);
+                        }
+                        if ((lang==1)|| (lang==2)) {
+                            verseContent[2] = verseContent[2].replace("-", " ");
+                            verseContent[2] = verseContent[2].replace("\n\n", "\n");
+                            SoundAlert(verseContent[2], false);
+                        }
+                    }
+                }
             }
             // Store values between instances here
             SharedPreferences preferences = getPreferences(MODE_PRIVATE);
@@ -220,10 +248,16 @@ public class MainActivity extends AppCompatActivity implements
             editor.putInt("LastVerse", Verse); // value to store
             // Commit to storage
             editor.commit();
+
+            tv1.startAnimation(animation1);
+            tv3.startAnimation(animation2);
+            tv4.startAnimation(animation3);
+
         }
         else{
             tv3.setText(R.string.errorbadformat);
         }
+
 
     }
 
@@ -237,17 +271,42 @@ public class MainActivity extends AppCompatActivity implements
 
         alerttone = prefs.getString("notifications_new_message_ringtone",
                 "content://settings/system/notification_sound");
+        soundenable = prefs.getBoolean("notifications_tone", false);
         alertenable = prefs.getBoolean("notifications_new_message", true);
         vibeenable = prefs.getBoolean("notifications_new_message_vibrate", false);
         ttsenable = prefs.getBoolean("notifications_new_message_speak", true);
 
-        speechrate = 0.9f;//prefs.getBoolean("notifications_new_message_tts", false);
-        String remfreqstr = prefs.getString("freq_list", "60");
-        if (remfreqstr.length()<1) remfreqstr = "60";
-        freq = 60 * Integer.parseInt(remfreqstr);
-        //freq = 10; //testing
+        speechrate = 1.0f;
+        String strrate = prefs.getString("rate_list", "1");
+        if ((strrate==null)||(strrate.length()<1)) strrate = "1";
+        if (strrate.equals("0")) speechrate = 0.85f;
+        if (strrate.equals("1")) speechrate = 1.0f;
+        if (strrate.equals("2")) speechrate = 1.25f;
+
+        String localestr = prefs.getString("locale_list", "0");
+        if ((localestr==null)||(localestr.length()<1)) localestr = "0";
+        if (localestr.equals("0")) locale = Locale.getDefault();
+        if (localestr.equals("1")) locale = Locale.US;
+        if (localestr.equals("2")) locale = Locale.UK;
+
+        String langstr = prefs.getString("lang_list", "2");
+        if ((langstr==null)||(langstr.length()<1)) langstr = "2";
+        if (langstr.equals("0")) lang = 0;
+        if (langstr.equals("1")) lang = 1;
+        if (langstr.equals("2")) lang = 2;
+
+        freqStr = prefs.getString("freq_list", "60");
+        if (freqStr.length()<1) freqStr = "60";
+        freq = 60 * Integer.parseInt(freqStr);
+        freqStr = freqStr + getString(R.string.nxtremmintoast);
 
         nonightrem = prefs.getBoolean("night_switch", true);
+        if (freq<1) {
+            freq = 20;
+            freqStr = getString(R.string.autoreadtimedisp);
+            nonightrem = false;//autoread in night too
+        }
+
         automode = prefs.getBoolean("auto_switch", false);
         if (automode) {
             nonightrem = false;//autoread in night too
@@ -256,55 +315,73 @@ public class MainActivity extends AppCompatActivity implements
         String srandenable = prefs.getString("order_list", "0");
         randenable = Integer.parseInt(srandenable);
 
-        //setupTimer();
-/*
-        alert = getAlarms.getString("notifications_new_message_ringtone", "notset");
-        if(alert.equals("notset")){
-            AlertDialog.Builder dlgAlert  = new AlertDialog.Builder(MainActivity.this);
-            dlgAlert.setMessage("Please set a notification tone.");
-            dlgAlert.setTitle("Set a sound");
-            dlgAlert.setPositiveButton("Ok",
-                    new DialogInterface.OnClickListener() {
-                        public void onClick(DialogInterface dialog, int which) {
-                            //Intent intent = new Intent(MainActivity.this, SettingsActivity2.class);
-                            //startActivity(intent);
-                        }
-                    });
-            dlgAlert.create().show();
+        animation1 = AnimationUtils.loadAnimation(MainActivity.this, R.anim.remzoom);
+        animation2 = AnimationUtils.loadAnimation(MainActivity.this, R.anim.fromleft);
+        animation3 = AnimationUtils.loadAnimation(MainActivity.this, R.anim.fromright);
+        animation4 = AnimationUtils.loadAnimation(MainActivity.this, R.anim.press);
 
-        }
-*/
+        tv1 = (TextView)findViewById(R.id.textwhosaid);
+        tv2 = (TextView)findViewById(R.id.textversenum);
+        tv3 = (TextView)findViewById(R.id.textverse);
+        tv4 = (TextView)findViewById(R.id.textViewComments);
+        sv = (ScrollView)findViewById(R.id.scrollViewVc);
 
     }
 
-    private void SoundAlert(final String speakme){
+    private void SoundAlert(final String speakme, final boolean hindi){
         if (alertenable) {
-            Uri uri = Uri.parse(alerttone);
-            PlayAlert(this, uri);
+            if (soundenable) {
+                Uri uri = Uri.parse(alerttone);
+                PlayAlert(this, uri);
+            }
 
             if (vibeenable) {
                 Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
                 v.vibrate(500);
             }
-            if (ttsenable) {
-                tts = new TextToSpeech(this, new TextToSpeech.OnInitListener() {
 
-                    @Override
-                    public void onInit(int status) {
-                        if (status == TextToSpeech.SUCCESS) {
-                            int result = tts.setLanguage(Locale.UK);
-                            if (result == TextToSpeech.LANG_MISSING_DATA ||
-                                    result == TextToSpeech.LANG_NOT_SUPPORTED) {
-                                Log.e("TTS Error", "This language is not supported");
-                            } else {
-                                tts.setSpeechRate(speechrate);
-                                tts.speak(speakme, TextToSpeech.QUEUE_FLUSH, null,
-                                        TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID);
-                            }
-                        } else
-                            Log.e("TTS Error", "Initialization Failed!");
-                    }
-                });
+            if (ttsenable) {
+                if (hindi) {
+                    ttsHindi = new TextToSpeech(this, new TextToSpeech.OnInitListener() {
+
+                        @Override
+                        public void onInit(int status) {
+                            if (status == TextToSpeech.SUCCESS) {
+                                Locale loc = Locale.forLanguageTag("hi-IN");
+                                int result = ttsHindi.setLanguage(loc);
+                                if (result == TextToSpeech.LANG_MISSING_DATA ||
+                                        result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                                    Log.e("TTS Error", "This language is not supported");
+                                } else {
+                                    ttsHindi.setSpeechRate(speechrate);
+                                    ttsHindi.speak(speakme, TextToSpeech.QUEUE_FLUSH, null,
+                                            TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID);
+                                }
+                            } else
+                                Log.e("TTS Error", "Initialization Failed!");
+                        }
+                    });
+                } else {
+                    tts = new TextToSpeech(this, new TextToSpeech.OnInitListener() {
+
+                        @Override
+                        public void onInit(int status) {
+                            if (status == TextToSpeech.SUCCESS) {
+                                int result = tts.setLanguage(locale);
+                                if (result == TextToSpeech.LANG_MISSING_DATA ||
+                                        result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                                    Log.e("TTS Error", "This language is not supported");
+                                } else {
+                                    tts.setSpeechRate(speechrate);
+                                    tts.speak(speakme, TextToSpeech.QUEUE_FLUSH, null,
+                                            TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID);
+                                }
+                            } else
+                                Log.e("TTS Error", "Initialization Failed!");
+                        }
+                    });
+                }
+
             }
         }
     }
@@ -373,6 +450,7 @@ public class MainActivity extends AppCompatActivity implements
             });
             toggle.startAnimation(fade_in);
             animrunning = true;
+            isTimerOn = true;
         }
     }
 
@@ -380,12 +458,14 @@ public class MainActivity extends AppCompatActivity implements
         if(am!=null){
             if(pi!=null){
                 am.cancel(pi);
+                isTimerOn = false;
             }
         }
         if(stopanim) {
             final ToggleButton toggle = (ToggleButton) findViewById(R.id.toggleButtonStartStop);
             toggle.clearAnimation();
         }
+
     }
 
     private void setupTimer() {
@@ -406,7 +486,7 @@ public class MainActivity extends AppCompatActivity implements
 
                 if (enabled) {
                     PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
-                    PowerManager.WakeLock wl = pm.newWakeLock(PowerManager.FULL_WAKE_LOCK |
+                    PowerManager.WakeLock wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK |
                             PowerManager.ACQUIRE_CAUSES_WAKEUP, "AshtavakraAppTag");
                     wl.acquire();
 
@@ -430,12 +510,15 @@ public class MainActivity extends AppCompatActivity implements
             }
         };
         registerReceiver(br, new IntentFilter("in.oormi.agita") );
-        pi = PendingIntent.getBroadcast( this, 0, new Intent("in.oormi.agita"), 0 );
+        pi = PendingIntent.getBroadcast( this, 0, new Intent("in.oormi.ashgita"), 0 );
         am = (AlarmManager)(this.getSystemService( Context.ALARM_SERVICE ));
     }
 
     @Override
     protected void onDestroy() {
+        if (tts!=null)tts.shutdown();
+        if (ttsHindi!=null)ttsHindi.shutdown();
+
         if(am!=null){
             if(pi!=null){
                 am.cancel(pi);
@@ -458,6 +541,7 @@ public class MainActivity extends AppCompatActivity implements
         }
         return false;
     }
+/*
 
     @Override
     public boolean onTouchEvent(MotionEvent event)
@@ -480,14 +564,14 @@ public class MainActivity extends AppCompatActivity implements
                     if (x2 > x1)
                     {
                         Verse++;
-                        if(Verse > MAX_VERSE){Verse = 0;}
+                        if(Verse > allVerses.size()){Verse = 0;}
                     }
 
                     // Right to left swipe action
                     else
                     {
                         Verse--;
-                        if(Verse < 0){Verse = MAX_VERSE;}
+                        if(Verse < 0){Verse = allVerses.size();}
                     }
 
                     stopTimer(true);
@@ -502,10 +586,15 @@ public class MainActivity extends AppCompatActivity implements
         }
         return super.onTouchEvent(event);
     }
+*/
 
     @Override
     public void onLoadFinished(Loader<String> loader, String data) {
         Toast.makeText(MainActivity.this, data, Toast.LENGTH_SHORT).show();
+        Verse = 0;
+        SharedPreferences preferences = getPreferences(MODE_PRIVATE);
+        Verse = preferences.getInt("LastVerse", 0); //restart at the last verse
+        ShowVerse(true);
     }
 
     @Override
@@ -526,17 +615,34 @@ public class MainActivity extends AppCompatActivity implements
 
         @Override
         public String loadInBackground() {
-            String str;
+            String str = "";
+            String str2 = "";
+            String strBlock = "";
+            //int nstr;
 
             BufferedReader reader = null;
+            BufferedReader reader2 = null;
             try {
-                reader = new BufferedReader(new InputStreamReader(getContext().getAssets().open("verses.txt")));
+                reader = new BufferedReader(new InputStreamReader(getContext().getAssets().open("ash01.txt"), "Unicode"));
+                reader2 = new BufferedReader(new InputStreamReader(getContext().getAssets().open("ashjr01.txt"), "UTF-8"));
                 int v = 0;
-                while (((str = reader.readLine()) != null) && (v < 298)) {
-                    allverses[v] = str;
-                    v++;
+                while (str != null) {
+                    str = reader.readLine();
+                    if (str != null) {
+                        if (!str.isEmpty()) {
+                            if (str.contains("@")) {
+                                str2 = reader2.readLine();
+                                str = str.replace("@", "");
+                                allVerses.add(strBlock + str2);
+                                v++;
+                                strBlock = "";
+                            }
+                            strBlock = strBlock + str + "\n";
+                        }
+                    }
+
                 }
-                str = "Loading finished.";
+                str = String.format("Loading finished. Count: %d", v);
             } catch (IOException e) {
                 str = "Loading error.";
                 Log.e("File Error", "Could not open verse file.");
@@ -545,7 +651,14 @@ public class MainActivity extends AppCompatActivity implements
                     try {
                         reader.close();
                     } catch (IOException e) {
-                        Log.e("File Error", "Could not close verse file.");
+                        Log.e("File Error", "Could not close first file.");
+                    }
+                }
+                if (reader2 != null) {
+                    try {
+                        reader2.close();
+                    } catch (IOException e) {
+                        Log.e("File Error", "Could not close second file.");
                     }
                 }
             }
@@ -558,7 +671,8 @@ public class MainActivity extends AppCompatActivity implements
         }
     }
 
-    public void JumpDialog(){
+    private void gotoDialog() {
+
         AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(this);
 
         LinearLayout layout = new LinearLayout(this);
@@ -571,20 +685,34 @@ public class MainActivity extends AppCompatActivity implements
         layout.setGravity(Gravity.CLIP_VERTICAL);
         layout.setPadding(10,10,10,10);
 
-        TextView tv = new TextView(this);
+        final TextView tv = new TextView(this);
         tv.setText(R.string.jumptitle);
         tv.setPadding(40, 40, 40, 40);
         tv.setGravity(Gravity.CENTER);
         tv.setTextSize(20);
 
-        final EditText et = new EditText(this);
-        et.setInputType(InputType.TYPE_CLASS_NUMBER);
-        et.setHint(R.string.jumprange);
-        et.setGravity(Gravity.CENTER);
-        layout.addView(et);
-
         alertDialogBuilder.setView(layout);
         alertDialogBuilder.setCustomTitle(tv);
+
+        final TextView tvChapter = new TextView(this);
+        tvChapter.setText(R.string.gotochapter);
+        tvChapter.setPadding(80,10,10,10);
+        layout.addView(tvChapter);
+
+        final SeekBar chapterBar = new SeekBar(this);
+        chapterBar.setMax(chapMap.length-1);
+        chapterBar.setProgress(0);
+        layout.addView(chapterBar);
+
+        final TextView tvVerse = new TextView(this);
+        tvVerse.setText(R.string.versenum);
+        tvVerse.setPadding(80,10,10,10);
+        layout.addView(tvVerse);
+
+        final SeekBar verseBar = new SeekBar(this);
+        verseBar.setMax(100);
+        verseBar.setProgress(0);
+        layout.addView(verseBar);
 
         alertDialogBuilder.setNegativeButton(R.string.jumpcancel, new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface dialog, int whichButton) {
@@ -593,22 +721,66 @@ public class MainActivity extends AppCompatActivity implements
         });
 
         alertDialogBuilder.setPositiveButton(R.string.jumpok, new DialogInterface.OnClickListener() {
+            @Override
             public void onClick(DialogInterface dialog, int which) {
-                String etStr = et.getText().toString();
-                if (etStr.length()>0){
-                    Verse = Integer.parseInt(etStr);
-                    ShowVerse(true);
-                }
+                setGotoVerse(chapterBar.getProgress(), verseBar.getProgress());
+                ShowVerse(true);
             }
         });
 
-        AlertDialog alertDialog = alertDialogBuilder.create();
+        chapterBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                tvChapter.setText(getString(R.string.gotochapter)+ " " + String.valueOf(progress+1));
+                verseBar.setMax(chapMap[progress] - 1);
+                verseBar.setProgress(0);
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+
+            }
+        });
+
+        verseBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                tvVerse.setText(getString(R.string.versenum) + " " + String.valueOf(progress+1));
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+
+            }
+        });
+
+
+        AlertDialog edSetDialog = alertDialogBuilder.create();
+        tvVerse.setText(getString(R.string.versenum) + " 1");
+        tvChapter.setText(getString(R.string.gotochapter) + " 1");
 
         try {
-            alertDialog.show();
+            edSetDialog.show();
         } catch (Exception e) {
             e.printStackTrace();
         }
+
+    }
+
+    private void setGotoVerse(int nchap, int nverse) {
+        int skip = 0;
+        for (int c=0;c<nchap;c++) skip = skip + chapMap[c];
+        Verse = skip + nverse + 1;
     }
 
     private ShareActionProvider mShareActionProvider;
@@ -626,7 +798,7 @@ public class MainActivity extends AppCompatActivity implements
         Intent shareIntent = new Intent(Intent.ACTION_SEND);
         shareIntent.setType("text/plain");
         shareIntent.putExtra(Intent.EXTRA_TEXT,
-                "https://play.google.com/store/apps/details?id=in.oormi.ashtavakragita");
+                "https://play.google.com/store/apps/details?id=in.oormi.avadhutagita");
         shareIntent.putExtra(android.content.Intent.EXTRA_SUBJECT, "Check out this app!");
         setShareIntent(shareIntent);
         return true;
@@ -641,10 +813,16 @@ public class MainActivity extends AppCompatActivity implements
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
+            case R.id.gotoverse:
+                gotoDialog();
+                break;
             case R.id.info:
-                //Toast.makeText(this, "Menu Item 1 selected", Toast.LENGTH_SHORT).show();
-                Intent i = new Intent(this, ResourceShow.class);
-                startActivity(i);
+                Intent resIntent = new Intent(this, ResourceShow.class);
+                startActivity(resIntent);
+                break;
+            case R.id.settings:
+                Intent setIntent = new Intent(this, SettingsActivity.class);
+                startActivity(setIntent);
                 break;
         }
         return true;
